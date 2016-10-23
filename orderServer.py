@@ -272,5 +272,6 @@ class OrderServer(object):
         print '5. exit'
         print '**' * 10
 
+#start
 app = OrderServer('gameMenu.txt', 'gameTool.txt', 5)
 app.start()
