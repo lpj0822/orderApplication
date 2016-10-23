@@ -3,9 +3,6 @@
 
 *****************
 game3.py
-
 food.txt
-
 tool.txt
-
 table.txt
