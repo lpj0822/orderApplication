@@ -1,5 +1,0 @@
-fish 12.0
-apple 13.0
-chicken 32.0
-vegetable 11.0
-meat 30.0

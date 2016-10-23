@@ -1,2 +1,0 @@
-tableware 100
-chopsticks 100
