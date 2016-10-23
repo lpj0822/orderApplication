@@ -273,5 +273,5 @@ class OrderServer(object):
         print '**' * 10
 
 #start
-app = OrderServer('gameMenu.txt', 'gameTool.txt', 5)
+app = OrderServer('food.txt', 'tool.txt', 5)
 app.start()
