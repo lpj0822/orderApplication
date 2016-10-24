@@ -42,8 +42,11 @@ class ToolItem(Item):
 
 class OrderItem(Item):
 
-    STATUS = {1:"order item", 2:"down item", 3:"cooking", 
+    STATUS = {1:"order item", 2:"down item", 3:"cooking", 4:"cancel item"} 
     STATUS_ORDER = 1
+    STATUS_DOWN = 2
+    STATUS_COOKING = 3
+    STATUS_CANCEL = 4
 
     def __init__(self, item, num=1):
         self.foodItem = item
@@ -65,4 +68,12 @@ class OrderItem(Item):
             self.num = 0
         else:
             self.num = temp
+    
+    def getStatus(self):
+        return self.status
 
+    def setStatus(self, status):
+        self.status = status
+
+    def __str__(self):
+        return self.foodItem.name + " " + self.STATUS[self.status]

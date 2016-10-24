@@ -2,8 +2,25 @@ from allItem import FoodItem, ToolItem, OrderItem
 
 class OrderList(object):
 
-    def __init__(self):
+    def __init__(self, menu):
+        self.menu = menu
         self.orderItems = {}
+
+    def addOrderItem(self, name):
+        if self.tabMenu.isInMenu(name):
+            if name in self.orderItems:
+                self.orderItems[name].addNum(1)
+            else:
+                self.orderItems[name] = OrderItem(self.menu.getMenuItem(name))
+        else:
+            print '%s not exit menu!' % name
+
+    def downItem(self):
+        pass
+
+    def clearOrderItem(self):
+        self.orderItems = {}
+
 
 class Menu(object):
 
@@ -72,27 +89,24 @@ class Table(object):
     def __init__(self, name, count):
         self.name = name
         self.chairCount = count
-        self.tabMenu = None
+        self.menu = None
         self.peopleNum = 0
         self.currentState = self.STATUS_CLOSE 
 
     def openTab(self, peopleNum):
         if self.currentState == self.STATUS_CLOSE:
-            if self.tabMenu:
-               self.tabMenu.showTool()
-               if self.tabMenu.isInTool('tableware') and self.tabMenu.isInTool('chopsticks'):
-                   ware = self.tabMenu.getToolItem('tableware')
-                   chopsticks = self.tabMenu.getToolItem('chopsticks')
-                   if ware.subTool(peopleNum) and chopsticks.subTool(peopleNum):
-                       self.peopleNum = peopleNum
-                       self.currentState = 2
-                       print 'open success!'
-                   else:
-                        print 'open fail'
+           self.tabMenu.showTool()
+           if self.tabMenu.isInTool('tableware') and self.tabMenu.isInTool('chopsticks'):
+               ware = self.tabMenu.getToolItem('tableware')
+               chopsticks = self.tabMenu.getToolItem('chopsticks')
+               if ware.subTool(peopleNum) and chopsticks.subTool(peopleNum):
+                   self.peopleNum = peopleNum
+                   self.currentState = 2
+                   print 'open success!'
                else:
                     print 'open fail'
-            else:
-                print 'not exit menu!'
+           else:
+                print 'open fail'
         else:
             print self
 
@@ -144,8 +158,6 @@ class Table(object):
 
     def clearTable(self):
         self.closeTab()
-        self.orderItems = {}
-        self.downItems = {}
 
     def getSumPrice(self, items):
         sumPrice = 0
@@ -172,8 +184,8 @@ class Table(object):
     def getOrderCount(self):
         return len(self.listMenuItems)
 
-    def setTabMenu(self, menu):
-        self.tabMenu = menu
+    def setMenu(self, menu):
+        self.menu = menu
 
     def __str__(self):
         return str(self.name) + ' ' + self.STATE[self.currentState]
@@ -197,20 +209,20 @@ class OrderServer(object):
             if res == 1:
                 self.showTable()
                 index = self.inputTableNum()
-                if index or index == 0:
+                if index:
                     peopleNum = self.inputPeopleNum()
                     self.listTables[index].openTab(peopleNum)
             elif res == 2:
                 index = self.inputTableNum()
-                if index or index == 0:
+                if index:
                     self.order(index)
             elif res == 3:
                 index = self.inputTableNum()
-                if index or index == 0:
+                if index:
                     self.downMenu(index)
             elif res == 4:
                  index = self.inputTableNum()
-                 if index or index == 0:
+                 if index:
                      self.checkout(index)
             elif res == 5:
                 print 'exit app.'
@@ -246,9 +258,9 @@ class OrderServer(object):
 
     def inputTableNum(self):
         try:
-            index = input('input table num:')
-            if 0 <= index < self.count:
-                return index
+            name = raw_input('input table name')
+            if name in self.listTables:
+                return name
         except:
             print 'not exit table!'
         return None
@@ -283,6 +295,7 @@ class OrderServer(object):
             for line in f.readlines():
                 name, count = line.split()
                 item = Table(name, int(count))
+                item.setMenu(self.myMenu)
                 self.listTables[name] = item
         except ValueError:        
             print '%s data error' % self.TABLE_FILE
@@ -292,5 +305,5 @@ class OrderServer(object):
 
 
 #start
-app = OrderServer('food.txt', 'tool.txt', 5)
+app = OrderServer()
 app.start()
