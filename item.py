@@ -42,6 +42,7 @@ class ToolItem(Item):
 
 class OrderItem(Item):
 
+    STATUS = {1:"order item", 2:"down item", 3:"cooking", 
     STATUS_ORDER = 1
 
     def __init__(self, item, num=1):
