@@ -1,4 +1,4 @@
-from item import FoodItem, ToolItem, OrderItem
+from allItem import FoodItem, ToolItem, OrderItem
 
 class OrderList(object):
 
@@ -15,7 +15,7 @@ class Menu(object):
             f = open(myMenuFile)
             for line in f.readlines():
                 name, price = line.split()
-                item = MenuItem(name, float(price))
+                item = FoodItem(name, float(price))
                 self.listMenuItems[name] = item
         except ValueError:        
             print '%s data error' % myMenuFile
@@ -61,19 +61,23 @@ class Menu(object):
 
 class Table(object):
 
-    STATE = {1:'close tab', 2:'open tab', 3:'ordering', 4:'down order',
+    STATUS = {1:'close tab', 2:'open tab', 3:'ordering', 4:'down order',
              5:'check out'}
+    STATUS_CLOSE = 1
+    STATUS_OPEN = 2
+    STATUS_ORDERING = 3
+    STATUS_DOWN_ORDER = 4
+    STATUS_CHECK_OUT = 5
 
-
-    def __init__(self, num):
-        self.num = num
+    def __init__(self, name, count):
+        self.name = name
+        self.chairCount = count
         self.tabMenu = None
-        self.downItems = {}
         self.peopleNum = 0
-        self.currentState = 1 
+        self.currentState = self.STATUS_CLOSE 
 
     def openTab(self, peopleNum):
-        if self.currentState == 1:
+        if self.currentState == self.STATUS_CLOSE:
             if self.tabMenu:
                self.tabMenu.showTool()
                if self.tabMenu.isInTool('tableware') and self.tabMenu.isInTool('chopsticks'):
@@ -93,18 +97,18 @@ class Table(object):
             print self
 
     def closeTab(self):
-        self.currentState = 1
+        self.currentState = self.STATUS_CLOSE
         print 'close success!'
 
     def addOrderItems(self, name):
-        if self.currentState >= 2: 
+        if self.currentState >= self.STATUS_OPEN: 
             if self.tabMenu:
                 if self.tabMenu.isInMenu(name):
                     if name in self.orderItems:
                         self.orderItems[name] += 1
                     else:
                         self.orderItems[name] = 1
-                    self.currentState = 3
+                    self.currentState = self.STATUS_ORDERING
                 print '%s not exit menu!' % name
             else:
                 print 'not exit menu!'
@@ -112,7 +116,7 @@ class Table(object):
             print self
 
     def addDownItems(self):
-        if self.currentState == 3:
+        if self.currentState == self.STATUS_ORDERING:
             print '-' * 7 + 'order items' + '-' * 7
             for name, num in self.orderItems.iteritems():
                 print 'name: %s price: %s num: %s' %(name,
@@ -121,20 +125,20 @@ class Table(object):
                     self.downItems[name] += num
                 else:
                     self.downItems[name] = num
-            self.currentState = 4
+            self.currentState = self.STATUS_DOWN_ORDER
             self.orderItems = {}
         else:
             print self
    
     def printBill(self):
-        if self.currentState >= 4:
+        if self.currentState >= self.STATUS_DOWN_ORDER:
             print '-' * 7 + 'bill' + '-' * 7
             for name, num in self.downItems.iteritems():
                 print 'name: %s price: %s num: %s' %(name,
                                                      self.tabMenu.getMenuItem(name).getPrice(),
                                                      num)
             print 'sum price: %s' % self.getSumPrice(self.downItems)
-            self.currentState = 5
+            self.currentState = self.CHECK_OUT
         else:
             print self
 
@@ -172,18 +176,19 @@ class Table(object):
         self.tabMenu = menu
 
     def __str__(self):
-        return str(self.num) + ' ' + self.STATE[self.currentState]
+        return str(self.name) + ' ' + self.STATE[self.currentState]
 
 class OrderServer(object):
+    
+    MENU_FILE = 'food.txt'
+    TOOL_FILE = 'tool.txt'
+    TABLE_FILE = 'table.txt'
 
-    def __init__(self, myMenuFile, myToolFile, count):
-       self.myMenu = Menu(myMenuFile, myToolFile)
-       self.listTables = []
-       self.count = count
-       for x in xrange(count):
-           temp = Table(x)
-           temp.setTabMenu(self.myMenu)
-           self.listTables.append(temp)
+    def __init__(self):
+       self.myMenu = Menu(self.MENU_FILE, self.TOOL_FILE)
+       self.listTables = {}
+       self.count = 0 
+       self.initTable()
 
     def start(self):
         while True:
@@ -271,6 +276,20 @@ class OrderServer(object):
         print '4. check out'
         print '5. exit'
         print '**' * 10
+    
+    def initTables(self):
+        try:
+            f = open(self.TABLE_FILE)
+            for line in f.readlines():
+                name, count = line.split()
+                item = Table(name, int(count))
+                self.listTables[name] = item
+        except ValueError:        
+            print '%s data error' % self.TABLE_FILE
+        except IOError:
+            print '%s open fail!' % self.TABLE_FILE
+        self.count = len(self.listTables)
+
 
 #start
 app = OrderServer('food.txt', 'tool.txt', 5)
