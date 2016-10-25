@@ -9,10 +9,13 @@ class Item(object):
     def getName(self):
         return self.name
 
+    def __str__(self):
+        return self.name
+
 class FoodItem(Item):
 
     def __init__(self, name, price):
-        super(MenuItem, self).__init__(name)
+        super(FoodItem, self).__init__(name)
         self.price = price
 
     def setPrice(self, price):
@@ -40,7 +43,7 @@ class ToolItem(Item):
     def getNum(self):
         return self.num
 
-class OrderItem(Item):
+class OrderItem(FoodItem):
 
     STATUS = {1:"order item", 2:"down item", 3:"cooking", 4:"cancel item"} 
     STATUS_ORDER = 1
@@ -49,12 +52,9 @@ class OrderItem(Item):
     STATUS_CANCEL = 4
 
     def __init__(self, item, num=1):
-        self.foodItem = item
+        super(OrderItem, self).__init__(item.getName(),item.getPrice())
         self.num = num
-        self.status = STATUS_ORDER
-
-    def getPrice(self):
-        return self.foodItem.getPrice()
+        self.status = self.STATUS_ORDER
 
     def getNum(self):
         return self.num
@@ -64,8 +64,9 @@ class OrderItem(Item):
 
     def subNum(self, num):
         temp = self.num - num
-        if temp < 0:
+        if temp <= 0:
             self.num = 0
+            self.status = self.STATUS_CANCEL
         else:
             self.num = temp
     
@@ -73,7 +74,10 @@ class OrderItem(Item):
         return self.status
 
     def setStatus(self, status):
-        self.status = status
+        if 0 < status <= len(self.STATUS):
+            self.status = status
+        else:
+            print 'order items status(%d) error!' % status
 
     def __str__(self):
-        return self.foodItem.name + " " + self.STATUS[self.status]
+        return self.name + " " + self.STATUS[self.status]

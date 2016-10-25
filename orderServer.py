@@ -1,27 +1,5 @@
 from allItem import FoodItem, ToolItem, OrderItem
 
-class OrderList(object):
-
-    def __init__(self, menu):
-        self.menu = menu
-        self.orderItems = {}
-
-    def addOrderItem(self, name):
-        if self.tabMenu.isInMenu(name):
-            if name in self.orderItems:
-                self.orderItems[name].addNum(1)
-            else:
-                self.orderItems[name] = OrderItem(self.menu.getMenuItem(name))
-        else:
-            print '%s not exit menu!' % name
-
-    def downItem(self):
-        pass
-
-    def clearOrderItem(self):
-        self.orderItems = {}
-
-
 class Menu(object):
 
     def __init__(self, myMenuFile, myToolFile):
@@ -76,10 +54,68 @@ class Menu(object):
     def getToolItem(self, name):
         return self.listToolItems[name]
 
+class OrderList(object):
+
+    def __init__(self, menu):
+        self.menu = menu
+        self.orderItems = {}
+
+    def addOrderItem(self, name, num=1):
+        if self.menu.isInMenu(name):
+            if name in self.orderItems:
+                self.orderItems[name].addNum(num)
+            else:
+                self.orderItems[name] = OrderItem(self.menu.getMenuItem(name), num)
+        else:
+            print '%s not exit menu!' % name
+
+    def subOrderItem(self, name, num=1):
+        if name in self.orderItems:
+            self.orderItems[name].subNum(num)
+        else:
+            print '%s order item not exit' % name
+
+    def downItem(self):
+        strList = []
+        strList.append('------down menu------')
+        for item in self.orderItems.itervalues():
+            if item.getStatus() == OrderItem.STATUS_ORDER:
+                item.setStatus(OrderItem.STATUS_DOWN)
+                temp = "name: %s price: %.2f count: %d" % (item.getName(),
+                                                           item.getPrice(),
+                                                           item.getNum())
+                strList.append(temp)
+
+        return '\n'.join(strList)
+
+    def getSumPrice(self):
+        strList = []
+        sumPrice = 0
+        strList.append('--------------bill--------------')
+        for item in self.orderItems.itervalues():
+            if item.getStatus() == OrderItem.STATUS_DOWN:
+                sumPrice += item.getPrice() * item.getNum()
+                item.setStatus(OrderItem.STATUS_CANCEL)
+                temp = "name: %s price: %.2f count: %d" % (item.getName(),
+                                                           item.getPrice(),
+                                                           item.getNum())
+                strList.append(temp)
+        strList.append('sum price: %.2f' % sumPrice)
+
+        return sumPrice, '\n'.join(strList)
+
+    def cancleOrderItem(self, name):
+        self.orderItems[name].setStauts(OrderItem.STATUS_CANCEL)
+
+    def clearOrderItem(self):
+        self.orderItems = {}
+
+    def countOrderList(self):
+        return len(self.orderItems)
+
 class Table(object):
 
-    STATUS = {1:'close tab', 2:'open tab', 3:'ordering', 4:'down order',
-             5:'check out'}
+    STATUS = {1:'close table', 2:'open table', 3:'ordering', 4:'down order', 5:'check out'}
     STATUS_CLOSE = 1
     STATUS_OPEN = 2
     STATUS_ORDERING = 3
@@ -91,89 +127,63 @@ class Table(object):
         self.chairCount = count
         self.menu = None
         self.peopleNum = 0
+        self.tableOrderList = None
         self.currentState = self.STATUS_CLOSE 
 
     def openTab(self, peopleNum):
-        if self.currentState == self.STATUS_CLOSE:
-           self.tabMenu.showTool()
-           if self.tabMenu.isInTool('tableware') and self.tabMenu.isInTool('chopsticks'):
-               ware = self.tabMenu.getToolItem('tableware')
-               chopsticks = self.tabMenu.getToolItem('chopsticks')
-               if ware.subTool(peopleNum) and chopsticks.subTool(peopleNum):
-                   self.peopleNum = peopleNum
-                   self.currentState = 2
-                   print 'open success!'
-               else:
-                    print 'open fail'
-           else:
-                print 'open fail'
-        else:
-            print self
+       ware = self.menu.getToolItem('tableware')
+       chopsticks = self.menu.getToolItem('chopsticks')
+       if peopleNum <= self.chairCount and ware.subTool(peopleNum) and chopsticks.subTool(peopleNum):
+           self.menu.showTool()
+           self.peopleNum = peopleNum
+           self.currentState = self.STATUS_OPEN
+           print 'open success!'
+       else:
+           print 'open fail!'
 
     def closeTab(self):
         self.currentState = self.STATUS_CLOSE
         print 'close success!'
 
-    def addOrderItems(self, name):
-        if self.currentState >= self.STATUS_OPEN: 
-            if self.tabMenu:
-                if self.tabMenu.isInMenu(name):
-                    if name in self.orderItems:
-                        self.orderItems[name] += 1
-                    else:
-                        self.orderItems[name] = 1
-                    self.currentState = self.STATUS_ORDERING
-                print '%s not exit menu!' % name
-            else:
-                print 'not exit menu!'
+    def maybe(self, startState, endState=None):
+        if endState is None:
+            endState = self.STATUS_CHECK_OUT
+        if startState <= self.currentState <= endState: 
+            return True
         else:
             print self
+            return False
+
+    def addOrderItems(self, name):
+        self.tableOrderList.addOrderItem(name)
+        self.currentState = self.STATUS_ORDERING
 
     def addDownItems(self):
-        if self.currentState == self.STATUS_ORDERING:
-            print '-' * 7 + 'order items' + '-' * 7
-            for name, num in self.orderItems.iteritems():
-                print 'name: %s price: %s num: %s' %(name,
-                                                     self.tabMenu.getMenuItem(name).getPrice(), num)
-                if name in self.downItems:
-                    self.downItems[name] += num
-                else:
-                    self.downItems[name] = num
-            self.currentState = self.STATUS_DOWN_ORDER
-            self.orderItems = {}
-        else:
-            print self
+        temp = self.tableOrderList.downItem()
+        print temp
+        self.currentState = self.STATUS_DOWN_ORDER
    
-    def printBill(self):
-        if self.currentState >= self.STATUS_DOWN_ORDER:
-            print '-' * 7 + 'bill' + '-' * 7
-            for name, num in self.downItems.iteritems():
-                print 'name: %s price: %s num: %s' %(name,
-                                                     self.tabMenu.getMenuItem(name).getPrice(),
-                                                     num)
-            print 'sum price: %s' % self.getSumPrice(self.downItems)
-            self.currentState = self.CHECK_OUT
-        else:
-            print self
-
     def clearTable(self):
         self.closeTab()
+        self.tableOrderList.clearOrderItem()
 
-    def getSumPrice(self, items):
-        sumPrice = 0
-        for name, num in self.items.iteritems():
-            sumPrice += self.tabMenu.getMenuItem(name).getPrice() * num
+    def getBill(self):
+        sumPrice, bill = self.tableOrderList.getSumPrice()
+        print bill
+        self.currentState = self.STATUS_CHECK_OUT
         return sumPrice 
 
     def setPeopleNum(self, count):
-        if count >= 0:
+        if 0<= count <= self.chairCount:
             self.peopleNum = count
+        else:
+            print 'people num (%d) error!' % count
 
     def getPeopleNum(self):
         return self.peopleNum
 
     def setCurrentState(self, state):
-        if 0 < state <= len(self.STATE):
+        if 0 < state <= len(self.STATUS):
             self.currentState = state
         else:
             print '%s state error!' % state 
@@ -181,14 +191,12 @@ class Table(object):
     def getCurrentState(self):
         return self.currentState
 
-    def getOrderCount(self):
-        return len(self.listMenuItems)
-
     def setMenu(self, menu):
         self.menu = menu
+        self.tableOrderList = OrderList(menu)
 
     def __str__(self):
-        return str(self.name) + ' ' + self.STATE[self.currentState]
+        return self.name + ' ' + self.STATUS[self.currentState] + '| chair %d' % self.chairCount
 
 class OrderServer(object):
     
@@ -200,67 +208,76 @@ class OrderServer(object):
        self.myMenu = Menu(self.MENU_FILE, self.TOOL_FILE)
        self.listTables = {}
        self.count = 0 
-       self.initTable()
+       self.initTables()
 
     def start(self):
         while True:
             self.showFuntion()
             res = input('you want to enter:')
+            if res == 0:
+                self.showTables()
             if res == 1:
-                self.showTable()
-                index = self.inputTableNum()
-                if index:
-                    peopleNum = self.inputPeopleNum()
-                    self.listTables[index].openTab(peopleNum)
+                name = self.inputTableName()
+                if name:
+                    self.openTable(name)
             elif res == 2:
-                index = self.inputTableNum()
-                if index:
-                    self.order(index)
+                name = self.inputTableName()
+                if name:
+                    self.order(name)
             elif res == 3:
-                index = self.inputTableNum()
-                if index:
-                    self.downMenu(index)
+                name = self.inputTableName()
+                if name:
+                    self.downOrder(name)
             elif res == 4:
-                 index = self.inputTableNum()
-                 if index:
-                     self.checkout(index)
+                 name = self.inputTableName()
+                 if name:
+                     self.checkout(name)
             elif res == 5:
                 print 'exit app.'
                 break
 
-    def order(self, tableNum):
-        self.myMenu.showMenu()
-        while True:
-            name = raw_input('input menuItem name:')
-            self.listTables[tableNum].addOrderItems(name)
-            res = raw_input('Do you want to continue (y/n)?')
-            if res == 'n':
-                break
-        print 'order end!'
+    def openTable(self, tableName):
+        if self.listTables[tableName].maybe(Table.STATUS_CLOSE, Table.STATUS_CLOSE):
+            peopleNum = self.inputPeopleNum()
+            self.listTables[tableName].openTab(peopleNum)
+        else:
+            print 'open table fail!'
+
+    def order(self, tableName):
+        if self.listTables[tableName].maybe(Table.STATUS_OPEN):
+            self.myMenu.showMenu()
+            while True:
+                name = raw_input('input menuItem name:')
+                self.listTables[tableName].addOrderItems(name)
+                res = raw_input('Do you want to continue (y/n)?')
+                if res == 'n':
+                    break
+            print 'order end!'
+        else:
+            print 'order fail!'
         
-    def checkout(self, tableNum):
-        self.listTables[tableNum].printBill()
-        sumPrice = self.listTables[tableNum].getOrderSumPrice()
-        while True:
-            res = raw_input('input price:')
-            if sumPrice - 0.1 <= float(res) <= sumPrice + 0.1:
-                self.listTables[tableNum].clearTable()
-                print 'checkout success!'
-                break
-            else:
-                print 'checkout fail!'
-            res = raw_input('Do you want to continue (y/n)?')
-            if res == 'n':
-                break
+    def checkout(self, tableName):
+        if self.listTables[tableName].maybe(Table.STATUS_DOWN_ORDER):
+            sumPrice = self.listTables[tableName].getBill()
+            self.inputSumPrice(sumPrice)
+            self.listTables[tableName].clearTable()
+        else:
+            print 'checkout fail!'
+        
 
-    def downMenu(self, tableNum):
-        self.listTables[tableNum].addDownItems()
+    def downOrder(self, tableName):
+        if self.listTables[tableName].maybe(Table.STATUS_ORDERING, Table.STATUS_ORDERING):
+            self.listTables[tableName].addDownItems()
+        else:
+            print 'down order fail!'
 
-    def inputTableNum(self):
+    def inputTableName(self):
         try:
-            name = raw_input('input table name')
+            name = raw_input('input table name:')
             if name in self.listTables:
                 return name
+            else:
+                print 'input table name not exit!'
         except:
             print 'not exit table!'
         return None
@@ -272,22 +289,33 @@ class OrderServer(object):
                 if peopleNum > 0:
                     return peopleNum
             except:
-                print 'input error'
+                print 'input error!'
 
-    def showTable(self):
-        print '-' * 7 + 'Tables' + '-' * 7
-        for tab in self.listTables:
+    def inputSumPrice(self, sumPrice):
+        while True:
+            res = raw_input('input price:')
+            if sumPrice - 0.1 <= float(res) <= sumPrice + 0.1:
+                print 'checkout success!'
+                break
+            else:
+                print 'checkout fail!'
+
+
+    def showTables(self):
+        print '-' * 10 + 'Tables' + '-' * 10
+        for tab in sorted(self.listTables.itervalues()):
             print tab
-        print '-' * 20
+        print '-' * 26
 
     def showFuntion(self):
-        print '**' * 10
+        print '**' * 5 + 'function' + '**' *5
+        print '0. show tables'
         print '1. open tab'
         print '2. order dishes'
         print '3. down menu'
         print '4. check out'
         print '5. exit'
-        print '**' * 10
+        print '**' * 14
     
     def initTables(self):
         try:
