@@ -1,2 +1,2 @@
-tableware 100
-chopsticks 100
+tableware 100 2.0
+chopsticks 100 1.0

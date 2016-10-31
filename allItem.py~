@@ -16,7 +16,7 @@ class FoodItem(Item):
 
     def __init__(self, name, price):
         super(FoodItem, self).__init__(name)
-        self.setPrice(price)
+        self.price = price
 
     def setPrice(self, price):
         self.price = price
@@ -28,8 +28,8 @@ class ToolItem(Item):
 
     def __init__(self, name, num, price):
         super(ToolItem, self).__init__(name)
-        self.setNum(num)
-        self.setPrice(price)
+        self.num = num
+        self.price = price
 
     def addTool(self, num):
         self.num += num
@@ -40,12 +40,6 @@ class ToolItem(Item):
             return 0
         self.num = temp
         return 1
-
-    def setNum(self, num):
-        if num <= 0:
-            self.num = 0
-        else:
-            self.num = num
 
     def getNum(self):
         return self.num
@@ -68,14 +62,7 @@ class OrderItem(Item):
         super(OrderItem, self).__init__(item.getName())
         self.foodItem = item
 	self.setStatus(self.STATUS_ORDER)
-        self.setNum(num)
-
-    def setNum(self, num):
-        if num <= 0:
-            self.num = 0
-            self.setStatus(self.STATUS_CANCLE)
-        else:
-            self.num = num
+        self.num = num
 
     def getNum(self):
         return self.num
@@ -95,7 +82,7 @@ class OrderItem(Item):
         return self.foodItem.getPrice()
 
     def getAllPrice(self):
-        return self.getPrice() * self.getNum()
+        return self.getPrice() * self.num
     
     def getStatus(self):
         return self.status
