@@ -256,7 +256,9 @@ class OrderServer(object):
             if options:
                 self.order(options)
         elif listResult[0] == "cancelOrder":
-            pass
+            options = self.optionsParser("cancelOrder", listResult[1:])
+            if options:
+                self.cancelOrder(options)
         elif listResult[0] == "downOrder":
             options = self.optionsParser("downOrder", listResult[1:])
             if options:
@@ -268,7 +270,7 @@ class OrderServer(object):
         elif listResult[0] == "quit":
             self.quit()
         else:
-            print '指令输入有误'
+            print '指令输入有误!'
 
     def showInformation(self, options):
         if options.tableName:
@@ -291,6 +293,14 @@ class OrderServer(object):
                 table.addOrderItems(options.foodName, options.foodNum)
             else:
                 print 'order fail!'
+
+    def cencelOrder(self, options):
+        if options.tableName and options.foodName:
+            table = self.getTable(options.tableName)
+            if table and table.maybe(Table.STATUS_ORDERING):
+                table.cancelOrderItems(options.foodName)
+            else:
+                print 'cancel fail!'
 
     def downOrder(self, options):
         if options.tableName:
@@ -337,7 +347,7 @@ class OrderServer(object):
         print '显示餐桌信息(show)'
         print '开台(openTable)'
         print '点菜(order)'
-        print '取消菜品(orderCancel)'
+        print '取消菜品(cancelOrder)'
         print '下单(downOrder)'
         print '结账(checkout)'
         print '退出系统(quit)'
