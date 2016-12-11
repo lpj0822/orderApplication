@@ -53,7 +53,6 @@ class Menu(object):
         except IOError:
             print '%s open fail!' % myToolFile
 
-
 class OrderList(object):
 
     def __init__(self, menu):
@@ -153,7 +152,7 @@ class Table(object):
     def openTab(self, peopleNum):
        ware = self.menu.getToolItem('tableware')
        chopsticks = self.menu.getToolItem('chopsticks')
-       if 0 < peopleNum <= self.chairCount and ware.subTool(peopleNum) and chopsticks.subTool(peopleNum):
+       if 0 < peopleNum <= self.chairCount:
            self.peopleNum = peopleNum
            self.tableOrderList.setTablewareCount(peopleNum)
            self.currentState = self.STATUS_OPEN
