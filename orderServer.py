@@ -3,13 +3,17 @@ import sys
 import socket
 import threading
 import json
+import collections
 from restaurant import Table, Menu
 from commandParse import CommandParse
-from orderException import TableException, CommandException, StateException, TableOpenException, FoodException, OrderFoodException
+from orderException import TableException, CommandException, StateException, TableOpenException, FoodException, ToolException, OrderFoodException
 
 class ProcessThread(threading.Thread):
 
     def __init__(self):
+        super(ProcessThread, self).__init__()
+
+    def run(self):
         pass
 
 class OrderServer(object):
@@ -21,7 +25,6 @@ class OrderServer(object):
 
     def __init__(self):
        self.myMenu = Menu(self.MENU_FILE, self.TOOL_FILE)
-       self.listTables = {}
        self.flag = True
        self.parse = CommandParse()
        self.initSocket(self.SERVER_PORT)
@@ -62,12 +65,12 @@ class OrderServer(object):
             try:
                 messageDict = self.inputParse(data)
             except (CommandException, TableException, StateException,
-                    TableOpenException, FoodException, OrderFoodException) as e:
+                    TableOpenException, FoodException, ToolException, OrderFoodException) as e:
                 messageDict['Error'] = str(e)
-            except Exception as e:
-                print 'server error:', e
+            # except Exception as e:
+            #     print 'server error:', e
             if messageDict:
-                self.sendData(sockFile, json.dumps(messageDict, encoding='utf-8'))
+                self.sendData(sockFile, json.dumps(messageDict, ensure_ascii=False))
 
     def inputParse(self, data):
         messageDict = {}
@@ -86,7 +89,7 @@ class OrderServer(object):
             messageDict = self.order(tableName, foodName, foodNum)
         elif listResult[0] == "cancelOrder":
             tableName, foodName = self.parse.cancelOrderParse(listResult[1:])
-            messageDict = self.cancelOrder(options)
+            messageDict = self.cancelOrder(tableName, foodName)
         elif listResult[0] == "downOrder":
             tableName = self.parse.downOrderParse(listResult[1:])
             messageDict = self.downOrder(tableName)
@@ -108,6 +111,7 @@ class OrderServer(object):
         return result
 
     def openTable(self, tableName, peopleNum):
+        result = {}
         table = self.getTable(tableName)
         if table and table.maybe(Table.STATUS_CLOSE, Table.STATUS_CLOSE):
             table.openTab(peopleNum)
@@ -115,6 +119,7 @@ class OrderServer(object):
         return result
 
     def order(self, tableName, foodName, foodNum):
+        result = {}
         table = self.getTable(tableName)
         if table.maybe(Table.STATUS_OPEN):
             table.addOrderItems(foodName, foodNum)
@@ -122,10 +127,11 @@ class OrderServer(object):
         return result
 
     def cancelOrder(self, tableName, foodName):
+        result = {}
         table = self.getTable(tableName)
         if table.maybe(Table.STATUS_ORDERING):
             table.cancelOrderItems(foodName)
-        result['cancelOrder'] = '%s 取消菜品成功'
+        result['cancelOrder'] = '%s 取消菜品成功' % tableName
         return result
 
     def downOrder(self, tableName):
@@ -144,19 +150,19 @@ class OrderServer(object):
         return result
 
     def quit(self):
+        result = {}
         self.flag = False
         result['quit'] = '服务器关闭'
         return result
 
     def showTable(self, name):
-        result = []
+        result = {}
         if name == "all":
-            for tab in sorted(self.listTables.itervalues()):
-                result.append(str(tab))
+            for name, table in self.listTables.iteritems():
+                result[name] = str(table)
         else:
             table = self.getTable(name)
-            if table:
-                result.append(str(table))
+            result[name] = str(table)
         return result
 
     def getTable(self, name):
@@ -171,6 +177,7 @@ class OrderServer(object):
         self.serverSocket.listen(5)
 
     def initTables(self, tableFile):
+        self.listTables = collections.OrderedDict()
         try:
             f = open(tableFile)
             for line in f.readlines():

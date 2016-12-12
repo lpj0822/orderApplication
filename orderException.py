@@ -9,6 +9,15 @@ class FoodException(Exception):
     def __str__(self):
         return '%s not exit menu!' % self.name
 
+class ToolException(Exception):
+
+    def __init__(self, name):
+        super(ToolException, self).__init__()
+        self.name = name
+
+    def __str__(self):
+        return '%s not exit tool-kit!' % self.name
+
 
 class OrderFoodException(Exception):
 
@@ -44,7 +53,7 @@ class StateException(Exception):
         self.message = message
 
     def __str__(self):
-        return 'Error State! current state: %s' % self.message
+        return 'Error State!|current state: %s' % self.message
 
 class CommandException(Exception):
 

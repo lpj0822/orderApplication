@@ -49,7 +49,7 @@ class OrderClient(object):
             data = sockFile.readline()
             if not data:
                 break
-            print json.loads(data, encoding='utf-8')
+            print json.loads(data)
 
     def showFunction(self):
         print '**' * 5 + '点菜系统' + '**' *5

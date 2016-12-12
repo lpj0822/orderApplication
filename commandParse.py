@@ -46,7 +46,7 @@ class CommandParse(object):
     def checkoutParse(self, args):
         options = self.optionsParse('checkout', args)
         if options and options.tableName:
-            return options.table
+            return options.tableName
         else:
             raise CommandException('checkout')
 
@@ -72,7 +72,7 @@ class CommandParse(object):
         showUsage = "usage: show [options] arg"
         showParser = OptionParser(usage=showUsage, add_help_option=False)
         showParser.add_option("-t", "--table", action="store", type="string",
-                              dest="tableName", help="show table information.")
+                              dest="tableName",  help="show table information.")
         showParser.add_option("-m", "--menu", action="store_true", 
                               dest="menu", help="show menu information.")
         showParser.add_option("-h", "--help", action="store_true",
