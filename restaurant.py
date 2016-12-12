@@ -1,5 +1,6 @@
 #coding:utf-8
 from allItem import FoodItem, ToolItem, OrderItem
+from orderException import FoodException, OrderFoodException, TableOpenException, StateException
 
 class Menu(object):
 
@@ -10,18 +11,20 @@ class Menu(object):
         self.initTool(myToolFile)
         
     def showFood(self):
-        print '------------Menu--------------'
-        for index, item in enumerate(self.listMenuItems.itervalues()):
-            print '%d. name:%s price:%s' % (index, item.getName(),
-                                            item.getPrice())
-        print '------------------------------'
-
+        result = []
+        for item in self.listMenuItems.itervalues():
+            data = '%s|%s' % (item.getName(), item.getPrice())
+            result.append(data)
+            #print 'name:%s price:%s' % (item.getName(), item.getPrice())
+        return result
+            
     def showTool(self):
-        print '------------Tools--------------'
-        for index, item in enumerate(self.listToolItems.itervalues()):
-            print '%d. name:%s num:%s' % (index, item.getName(),
-                                            item.getNum())
-        print '------------------------------'
+        result = []
+        for item in self.listToolItems.itervalues():
+            data = '%s|%s' % (item.getName(), item.getNum())
+            result.append(data)
+            #print 'name:%s num:%s' % (item.getName(), item.getNum())
+        return result
 
     def getMenuItem(self, name):
         return self.listMenuItems.get(name)
@@ -30,7 +33,7 @@ class Menu(object):
         return self.listToolItems.get(name)
 
     def initMenu(self, myMenuFile):
-         try:
+        try:
             f = open(myMenuFile)
             for line in f.readlines():
                 name, price = line.split()
@@ -68,19 +71,19 @@ class OrderList(object):
             else:
                 self.orderItems[name] = OrderItem(item, num)
         else:
-            print '%s not exit menu!' % name
+            raise FoodException(name)
 
     def subOrderItem(self, name, num=1):
         if name in self.orderItems:
             self.orderItems[name].subNum(num)
         else:
-            print '%s order item not exit' % name
+            raise OrderFoodException(name)
 
     def cencelOrderItem(self,name):
         if name in self.orderItems:
             self.orderItems[name].setStatus(OrderItem.CANCEL)
         else:
-            print '%s order item not exit' % name
+            raise OrderFoodException(name)
 
     def downItem(self):
         strList = []
@@ -92,8 +95,7 @@ class OrderList(object):
                                                            item.getPrice(),
                                                            item.getNum())
                 strList.append(temp)
-
-        return '\n'.join(strList)
+        return strList
 
     def getSumPrice(self):
         strList = []
@@ -114,7 +116,7 @@ class OrderList(object):
             sumPrice += toolItem.getPrice() * self.getTablewareCount()
         strList.append('sum price: %.2f' % sumPrice)
 
-        return sumPrice, '\n'.join(strList)
+        return sumPrice, strList
 
     def cancleOrderItem(self, name):
         self.orderItems[name].setStauts(OrderItem.STATUS_CANCEL)
@@ -156,23 +158,9 @@ class Table(object):
            self.peopleNum = peopleNum
            self.tableOrderList.setTablewareCount(peopleNum)
            self.currentState = self.STATUS_OPEN
-           print 'open success!'
        else:
-           print 'open fail!'
-
-    def closeTab(self):
-        self.currentState = self.STATUS_CLOSE
-        print 'close success!'
-
-    def maybe(self, startState, endState=None):
-        if endState is None:
-            endState = self.STATUS_CHECK_OUT
-        if startState <= self.currentState <= endState: 
-            return True
-        else:
-            print self
-            return False
-
+           raise TableOpenException(self.name)
+    
     def addOrderItems(self, name, num=1):
         self.tableOrderList.addOrderItem(name,num)
         self.currentState = self.STATUS_ORDERING
@@ -180,26 +168,34 @@ class Table(object):
     def cancelOrderItems(self, name):
         self.tableOrderList.cancleOrderItem(name)
 
-    def addDownItems(self):
+    def downItems(self):
         temp = self.tableOrderList.downItem()
-        print temp
         self.currentState = self.STATUS_DOWN_ORDER
-   
+        return temp
+
+    def getBill(self):
+        sumPrice, bill = self.tableOrderList.getSumPrice()
+        self.currentState = self.STATUS_CHECK_OUT
+        return bill 
+
     def clearTable(self):
         self.closeTab()
         self.tableOrderList.clearOrderItem()
 
-    def getBill(self):
-        sumPrice, bill = self.tableOrderList.getSumPrice()
-        print bill
-        self.currentState = self.STATUS_CHECK_OUT
-        return sumPrice 
+    def closeTab(self):
+        self.currentState = self.STATUS_CLOSE
+
+    def maybe(self, startState, endState=None):
+        if endState is None:
+            endState = self.STATUS_CHECK_OUT
+        if startState <= self.currentState <= endState: 
+            return True
+        else:
+            raise StateException(str(self))
 
     def setPeopleNum(self, count):
         if 0< count <= self.chairCount:
             self.peopleNum = count
-        else:
-            print 'people num (%d) error!' % count
 
     def getPeopleNum(self):
         return self.peopleNum
@@ -207,8 +203,6 @@ class Table(object):
     def setCurrentState(self, state):
         if 0 < state <= len(self.STATUS):
             self.currentState = state
-        else:
-            print '%s state error!' % state 
 
     def getCurrentState(self):
         return self.currentState

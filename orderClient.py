@@ -1,12 +1,37 @@
 #coding:utf-8
 import socket
+from commandParse import CommandParse
+from orderException import CommandException
 
 class OrderClient(object):
 
-    def _init__(self, serverHost, serverPort):
+    def __init__(self, serverHost, serverPort):
         self.serverHost = serverHost
         self.serverPort = serverPort
         self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    def start(self):
+        self.showFunction()
+        while True:
+            try:
+                data = raw_input('请输入指令:')
+                if data == 'quit':
+                    break
+                res = self.commandParse(data)
+                if res:
+                    res = self.addHead(data)
+                    self.connectServer(self.clientSocket, self.serverHost,
+                                   self.serverPort)
+                    sockFile = self.clientSocket.makefile(bufsize=1)
+                    sockFile.write(res)
+                    self.readData(sockFile)
+                    self.close(sockFile, self.clientSocket)
+            except CommandException as e:
+                print e
+            except Exception as e:
+                print e
+            finally:
+                pass
 
     def connectServer(self, sock, host, port):
         sock.connect((host, port))
@@ -35,17 +60,19 @@ class OrderClient(object):
         print '结账(checkout)'
         print '**' * 14
 
-    def start(self):
-        self.showFunction()
-        while True:
-            data = raw_input('请输入指令:')
-            res = self.addHead(data)
-            self.connectServer(self.clientSocket, self.serverHost,
-                               self.serverPort)
-            sockFile = self.clientSocket.makefile(bufsize=1)
-            sockFile.write(res)
-            self.readData(sockFile)
-            self.close(sockFile, self.clientSocket)
+    def commandParse(self, data):
+        parse = CommandParse()
+        data = data.strip()
+        listResult = data.split()
+        if len(listResult) <= 0:
+            raise CommandException('input')
+        else:
+            result = parse.optionsParse(listResult[0], listResult[1:])
+            if result:
+                return True
+            else:
+                return False
+
 
 if __name__ == '__main__':
     client = OrderClient('127.0.0.1', 9999)

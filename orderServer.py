@@ -1,8 +1,16 @@
 #coding:utf-8
 import sys
 import socket
-from restaurant import Table
+import threading
+import json
+from restaurant import Table, Menu
 from commandParse import CommandParse
+from orderException import TableException, CommandException
+
+class ProcessThread(threading.Thread):
+
+    def __init__(self):
+        pass
 
 class OrderServer(object):
     
@@ -20,12 +28,23 @@ class OrderServer(object):
        self.initTables(self.TABLE_FILE)
        
     def start(self):
+        print 'Order Server start...'
         while self.flag:
-            res = raw_input('请输入指令:')
-            self.inputParser(res)
+            sock = self.acceptClient(self.serverSocket)
+            self.processClient(sock)
+        print 'Server End!'
 
     def acceptClient(self, serverSock):
-        sock, addr = 
+        sock, addr = serverSock.accept()
+        print addr, 'connected'
+        return sock
+
+    def processClient(self, sock):
+        sockFile = sock.makefile(bufsize=1)
+        result = self.recvData(sockFile)
+        self.allDataParse(result, sockFile)
+        sockFile.close()
+        sock.close()
 
     def recvData(self, sockFile):
         result = []
@@ -36,94 +55,107 @@ class OrderServer(object):
             result.append(data)
         return result
 
-    def inputParser(self, inputResult):
-        inputResult = inputResult.strip()
-        listResult = inputResult.split()
+    def sendData(self, sockFile, data):
+        data += '\n'
+        sockFile.write(data)
+
+    def sendAllData(self, sockFile, dataList):
+        for data in dataList:
+            self.sendData(sockFile, data)
+
+    def allDataParse(self, dataList, sockFile):
+        for data in dataList:
+            messageDict = {}
+            try:
+                messageDict = self.inputParse(data)
+            except (CommandException, TabelException, StateException,
+                    TableOpenException, FoodException, OrderFoodException) as e:
+                messageDict['Error'] = str(e)
+            except Exception as e:
+                messageDict['Error'] = str(e)
+            self.sendData(sockFile, json.dumps(messageDict))
+
+    def inputParse(self, data):
+        messageDict = {}
+        data = data.strip()
+        listResult = data.split()
         if len(listResult) <= 0:
-            return
+            raise CommandException('input')
         elif listResult[0] == "show":
-            options = parse.optionsParser("show", listResult[1:])
-            if options:
-                self.showInformation(options)
+            tableName, menu = parse.showParse(listResult[1:])
+            messageDict = self.showInformation(tableName, menu)
         elif listResult[0] == "openTable":
-            options = parse.optionsParser("openTable", listResult[1:])
-            if options:
-                self.openTable(options)
+            tableName, peopleNum = parse.openTableParse(listResult[1:])
+            messageDict = self.openTable(tableName, peopleNum)
         elif listResult[0] == "order":
-            options = parse.optionsParser("order", listResult[1:])
-            if options:
-                self.order(options)
+            tableName, foodName, foodNum = parse.orderParse(listResult[1:])
+            messageDict = self.order(tableName, foodName, foodNum)
         elif listResult[0] == "cancelOrder":
-            options = parse.optionsParser("cancelOrder", listResult[1:])
-            if options:
-                self.cancelOrder(options)
+            tableName, foodName = parse.cancelOrderParse(listResult[1:])
+            messageDict = self.cancelOrder(options)
         elif listResult[0] == "downOrder":
-            options = parse.optionsParser("downOrder", listResult[1:])
-            if options:
-                self.downOrder(options)
+            tableName = parse.downOrderParse(listResult[1:])
+            messageDict = self.downOrder(tableName)
         elif listResult[0] == "checkout":
-            options = parse.optionsParser("checkout", listResult[1:])
-            if options:
-                self.checkout(options)
+            tableName = parse.checkoutParse(listResult[1:])
+            messageDict = self.checkout(tableName)
         elif listResult[0] == "quit":
-            self.quit()
+            messageDict = self.quit()
         else:
-            print '指令输入有误!'
+            raise CommandException('not exit')
+        return messageDict
 
-    def showInformation(self, options):
-        if options.tableName:
-            self.showTable(options.tableName)
-        if options.menu:
-            self.myMenu.showFood()
+    def showInformation(self, tableName, menu):
+        result = {}
+        if tableName:
+            result['show']['table'] = self.showTable(tableName)
+        if menu:
+            result['show']['food'] = self.myMenu.showFood()
+        return result
 
-    def openTable(self, options):
-        if options.tableName and options.peopleNum:
-            table = self.getTable(options.tableName)
-            if table and table.maybe(Table.STATUS_CLOSE, Table.STATUS_CLOSE):
-                table.openTab(options.peopleNum)
-            else:
-                print 'open table fail!'
+    def openTable(self, tableName, peopleNum):
+        table = self.getTable(tableName)
+        if table and table.maybe(Table.STATUS_CLOSE, Table.STATUS_CLOSE):
+            table.openTab(peopleNum)
+        result['openTable'] = '%s 开台成功' % tableName 
+        return result
 
-    def order(self, options):
-        if options.tableName and options.foodName:
-            table = self.getTable(options.tableName)
-            if table and table.maybe(Table.STATUS_OPEN):
-                table.addOrderItems(options.foodName, options.foodNum)
-            else:
-                print 'order fail!'
+    def order(self, tableName, foodName, foodNum):
+        table = self.getTable(tableName)
+        if table.maybe(Table.STATUS_OPEN):
+            table.addOrderItems(foodName, foodNum)
+        result['order'] = '%s 点菜成功' % tableName
+        return result
 
-    def cencelOrder(self, options):
-        if options.tableName and options.foodName:
-            table = self.getTable(options.tableName)
-            if table and table.maybe(Table.STATUS_ORDERING):
-                table.cancelOrderItems(options.foodName)
-            else:
-                print 'cancel fail!'
+    def cancelOrder(self, tableName, foodName):
+        table = self.getTable(tableName)
+        if table.maybe(Table.STATUS_ORDERING):
+            table.cancelOrderItems(foodName)
+        result['cancelOrder'] = '%s 取消菜品成功'
+        return result
 
-    def downOrder(self, options):
-        if options.tableName:
-            table = self.getTable(options.tableName)
-            if table and table.maybe(Table.STATUS_ORDERING, Table.STATUS_ORDERING):
-                table.addDownItems()
-            else:
-                print 'down order fail!'
+    def downOrder(self, tableName):
+        result = {}
+        table = self.getTable(tableName)
+        if table.maybe(Table.STATUS_ORDERING, Table.STATUS_ORDERING):
+            result['downOrder'] = table.downItems()
+        return result
 
-    def checkout(self, options):
-        if options.tableName:
-            table = self.getTable(options.tableName)
-            if table and table.maybe(Table.STATUS_DOWN_ORDER):
-                sumPrice = table.getBill()
-                table.clearTable()
-            else:
-                print 'checkout fail!'
-        
+    def checkout(self, tableName):
+        result = {}
+        table = self.getTable(tableName)
+        if table.maybe(Table.STATUS_DOWN_ORDER):
+            result['checkout'] = table.getBill()
+            table.clearTable()
+        return result
+
     def quit(self):
         self.flag = False
-        print '退出点菜系统!'
+        result['quit'] = '服务器关闭'
+        return result
 
     def showTable(self, name):
         result = []
-        result.append('-' * 10 + '餐桌信息' + '-' * 10)
         if name == "all":
             for tab in sorted(self.listTables.itervalues()):
                 result.append(str(tab))
@@ -131,16 +163,18 @@ class OrderServer(object):
             table = self.getTable(name)
             if table:
                 result.append(str(table))
-        result.append('-' * 26)
         return result
 
-    def getTableCount(self):
-        return len(self.listTables)
+    def getTable(self, name):
+        table = self.listTables.get(name)
+        if not table:
+            raise TableException(name)
+        return table
 
     def initSocket(self, port):
         self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serverSocket.bind(('', port))
-        self.serverSocket.listent(5)
+        self.serverSocket.listen(5)
 
     def initTables(self, tableFile):
         try:
@@ -160,4 +194,3 @@ if __name__ == "__main__":
     #start
     app = OrderServer()
     app.start()
-    #print sys.argv

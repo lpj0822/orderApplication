@@ -1,5 +1,6 @@
 #coding:utf-8
 from optparse import OptionParser
+from orderException import CommandException
 
 class CommandParse(object):
 
@@ -7,8 +8,50 @@ class CommandParse(object):
         self.listParser = {}
         self.initInputOptionParser()
 
-    def optionsParser(self, commandName, args):
-        parser = self.listParser[functionName]
+    def showParse(self, args):
+        options = self.optionsParse('show', args)
+        if options and options.tableName or options.menu:
+            return options.tableName, options.menu
+        else:
+            raise CommandException('show')
+
+    def openTableParse(self, args):
+        options = self.optionsParse('openTable', args)
+        if options and options.tableName and options.peopleNum:
+            return options.tableName, options.peopleNum
+        else:
+            raise CommandException('openTable')
+
+    def orderParse(self, args):
+        options = self.optionsParse('order', args)
+        if options and options.tableName and options.foodName and options.foodNum:
+            return options.tableName, options.foodName, options.foodNum
+        else:
+            raise CommandException('order')
+
+    def cancelOrderParse(self, args):
+        options = self.optionsParse('cancelOrder', args)
+        if options and options.tableName and options.foodName:
+            return options.tableName, options.foodName
+        else:
+            raise CommandException('cancelOrder')
+
+    def downOrderParse(self, args):
+        options = self.optionsParse('downOrder', args)
+        if options and options.tableName:
+            return options.tableName
+        else:
+            raise CommandException('downOrder')
+
+    def checkoutParse(self, args):
+        options = self.optionsParse('checkout', args)
+        if options and options.tableName:
+            return options.table
+        else:
+            raise CommandException('checkout')
+
+    def optionsParse(self, commandName, args):
+        parser = self.getParser(commandName)
         (options, args) = parser.parse_args(args)
         if options.help:
             parser.print_help()
@@ -17,6 +60,12 @@ class CommandParse(object):
 
     def printCommandHelp(self, commandName):
         pass
+
+    def getParser(self, commandName):
+        parser = self.listParser.get(commandName)
+        if not parser:
+            raise CommandException('not exit')
+        return parser
 
     def initInputOptionParser(self):
         #show
