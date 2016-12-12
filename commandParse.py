@@ -10,7 +10,7 @@ class CommandParse(object):
 
     def showParse(self, args):
         options = self.optionsParse('show', args)
-        if options and options.tableName or options.menu:
+        if options and (options.tableName or options.menu):
             return options.tableName, options.menu
         else:
             raise CommandException('show')

@@ -1,5 +1,6 @@
 #coding:utf-8
 import socket
+import json
 from commandParse import CommandParse
 from orderException import CommandException
 
@@ -8,7 +9,6 @@ class OrderClient(object):
     def __init__(self, serverHost, serverPort):
         self.serverHost = serverHost
         self.serverPort = serverPort
-        self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     def start(self):
         self.showFunction()
@@ -19,22 +19,23 @@ class OrderClient(object):
                     break
                 res = self.commandParse(data)
                 if res:
-                    res = self.addHead(data)
-                    self.connectServer(self.clientSocket, self.serverHost,
-                                   self.serverPort)
-                    sockFile = self.clientSocket.makefile(bufsize=1)
-                    sockFile.write(res)
+                    sock, sockFile = self.connectServer(self.serverHost, self.serverPort)
+                    data = self.addHead(data)
+                    sockFile.write(data)
                     self.readData(sockFile)
-                    self.close(sockFile, self.clientSocket)
+                    self.close(sockFile, sock)
             except CommandException as e:
                 print e
             except Exception as e:
-                print e
+                print 'client error:', e
             finally:
                 pass
 
-    def connectServer(self, sock, host, port):
+    def connectServer(self, host, port):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((host, port))
+        sockFile = sock.makefile(bufsize=1)
+        return sock, sockFile
 
     def close(self, sockFile, sock):
         sockFile.close()
@@ -48,7 +49,7 @@ class OrderClient(object):
             data = sockFile.readline()
             if not data:
                 break
-            print data
+            print json.loads(data, encoding='utf-8')
 
     def showFunction(self):
         print '**' * 5 + '点菜系统' + '**' *5
@@ -72,7 +73,6 @@ class OrderClient(object):
                 return True
             else:
                 return False
-
 
 if __name__ == '__main__':
     client = OrderClient('127.0.0.1', 9999)

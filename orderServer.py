@@ -5,7 +5,7 @@ import threading
 import json
 from restaurant import Table, Menu
 from commandParse import CommandParse
-from orderException import TableException, CommandException
+from orderException import TableException, CommandException, StateException, TableOpenException, FoodException, OrderFoodException
 
 class ProcessThread(threading.Thread):
 
@@ -23,7 +23,7 @@ class OrderServer(object):
        self.myMenu = Menu(self.MENU_FILE, self.TOOL_FILE)
        self.listTables = {}
        self.flag = True
-       parse = CommandParse()
+       self.parse = CommandParse()
        self.initSocket(self.SERVER_PORT)
        self.initTables(self.TABLE_FILE)
        
@@ -48,32 +48,26 @@ class OrderServer(object):
 
     def recvData(self, sockFile):
         result = []
-        while True:
-            data = sockFile.readline()
-            if not data:
-                break
-            result.append(data)
+        data = sockFile.readline()
+        result.append(data)
         return result
 
     def sendData(self, sockFile, data):
         data += '\n'
         sockFile.write(data)
 
-    def sendAllData(self, sockFile, dataList):
-        for data in dataList:
-            self.sendData(sockFile, data)
-
     def allDataParse(self, dataList, sockFile):
         for data in dataList:
             messageDict = {}
             try:
                 messageDict = self.inputParse(data)
-            except (CommandException, TabelException, StateException,
+            except (CommandException, TableException, StateException,
                     TableOpenException, FoodException, OrderFoodException) as e:
                 messageDict['Error'] = str(e)
             except Exception as e:
-                messageDict['Error'] = str(e)
-            self.sendData(sockFile, json.dumps(messageDict))
+                print 'server error:', e
+            if messageDict:
+                self.sendData(sockFile, json.dumps(messageDict, encoding='utf-8'))
 
     def inputParse(self, data):
         messageDict = {}
@@ -82,22 +76,22 @@ class OrderServer(object):
         if len(listResult) <= 0:
             raise CommandException('input')
         elif listResult[0] == "show":
-            tableName, menu = parse.showParse(listResult[1:])
+            tableName, menu = self.parse.showParse(listResult[1:])
             messageDict = self.showInformation(tableName, menu)
         elif listResult[0] == "openTable":
-            tableName, peopleNum = parse.openTableParse(listResult[1:])
+            tableName, peopleNum = self.parse.openTableParse(listResult[1:])
             messageDict = self.openTable(tableName, peopleNum)
         elif listResult[0] == "order":
-            tableName, foodName, foodNum = parse.orderParse(listResult[1:])
+            tableName, foodName, foodNum = self.parse.orderParse(listResult[1:])
             messageDict = self.order(tableName, foodName, foodNum)
         elif listResult[0] == "cancelOrder":
-            tableName, foodName = parse.cancelOrderParse(listResult[1:])
+            tableName, foodName = self.parse.cancelOrderParse(listResult[1:])
             messageDict = self.cancelOrder(options)
         elif listResult[0] == "downOrder":
-            tableName = parse.downOrderParse(listResult[1:])
+            tableName = self.parse.downOrderParse(listResult[1:])
             messageDict = self.downOrder(tableName)
         elif listResult[0] == "checkout":
-            tableName = parse.checkoutParse(listResult[1:])
+            tableName = self.parse.checkoutParse(listResult[1:])
             messageDict = self.checkout(tableName)
         elif listResult[0] == "quit":
             messageDict = self.quit()
@@ -106,7 +100,7 @@ class OrderServer(object):
         return messageDict
 
     def showInformation(self, tableName, menu):
-        result = {}
+        result = {'show':{}}
         if tableName:
             result['show']['table'] = self.showTable(tableName)
         if menu:
