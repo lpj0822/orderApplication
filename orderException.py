@@ -28,6 +28,15 @@ class OrderFoodException(Exception):
     def __str__(self):
         return '%s not exit order items' % self.name
 
+class CancelOrderFoodException(Exception):
+
+    def __init__(self, name):
+        super(CancelOrderFoodException, self).__init__()
+        self.name = name
+
+    def __str__(self):
+        return '%s cancel fail!' % self.name
+
 class TableException(Exception):
 
     def __init__(self, name):

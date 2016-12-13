@@ -59,7 +59,7 @@ class ToolItem(Item):
 
 class OrderItem(Item):
 
-    STATUS = {1:"order item", 2:"down item", 3:"cooking", 4:"cancel item"} 
+    STATUS = {1:"order", 2:"down", 3:"cooking", 4:"cancel"} 
     STATUS_ORDER = 1
     STATUS_DOWN = 2
     STATUS_COOKING = 3
@@ -68,7 +68,7 @@ class OrderItem(Item):
     def __init__(self, item, num=1):
         super(OrderItem, self).__init__(item.getName())
         self.foodItem = item
-	self.setStatus(self.STATUS_ORDER)
+        self.setStatus(self.STATUS_ORDER)
         self.setNum(num)
 
     def setNum(self, num):
@@ -108,4 +108,4 @@ class OrderItem(Item):
             print 'order items status(%d) error!' % status
 
     def __str__(self):
-        return self.name + " " + self.STATUS[self.status]
+        return  self.STATUS[self.status] + '|' + self.num
